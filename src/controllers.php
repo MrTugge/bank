@@ -61,24 +61,70 @@
 	})
 	->method('PUT|GET|DELETE');
 
+
 	/*
 		response for /payement/{id}
 
-		- get: specific payment info IF hashed customerID is correct
+		- get: specific payment info
 		- put: update payment to payed if not payed yet
 		- post/delete: INVALID
 	*/
 	$app->get('/payment/{id}', function ($id) use ($app) {
-	    $message= array('message' => 'get message');
-	    return $app->json($message, 200);
+	    $sql = "SELECT * FROM payment WHERE id = ? AND status = 1";
+	    $post = $app['db']->fetchAssoc($sql, array((int)$id));
+
+	    if ($post == null){ 
+	    	$error= array('message' => 'Incorrect paymentID.');
+	    	return $app->json($error, 400);
+	    } else {
+	    	$message= array('message' => 'Requested payment information.', 
+	    					'content' => 
+		    				array(
+								'sender' => $post['sender'], 
+								'receiver' => $post['receiver'],
+								'amount' => $post['amount'],
+								'description' => $post['description'],
+								'date' => $post['date'],
+							));
+	    	return $app->json($message, 200); 
+	    }
 	});
 	$app->put('/payment/{id}', function($id) use ($app) {
-		$message= array('message' => "put message");
-		return $app->json($message, 200);
+		$sql = "SELECT * FROM payment WHERE id = ? AND status = 0";
+		$post = $app['db']->fetchAssoc($sql, array((int)$id));
+
+		if ($post == null){
+			$error= array('message' => 'Incorrect paymentID or already paid.');
+			return $app->json($error, 400);
+		} else {
+			$sql1 = "SELECT * FROM account WHERE accountnumber = ? AND balance >= ?";
+			$post1 = $app['db']->fetchAssoc($sql1, array($post['sender'], $post['amount']));
+			$sql2 = "SELECT * FROM account WHERE accountnumber = ?";
+			$post2 = $app['db']->fetchAssoc($sql2, array($post['receiver']));
+
+			if ($post1 == null OR $post2 == null){
+				$error = array('message' => 'Incorrect accountnumber sender and/or receiver or balance sender too low.');
+				return $app->json($error, 400);
+			} else {
+				
+				// Get money from sender
+				$newBalance = $post1['balance']-$post['amount'];
+				$app['db']->update('account', array('balance' => $newBalance), array('accountnumber' => $post['sender']));
+				// Give money to receiver
+				$newBalance = $post2['balance']+$post['amount'];
+				$app['db']->update('account', array('balance' => $newBalance), array('accountnumber' => $post['receiver']));
+				// Update payment status
+				$app['db']->update('payment', array('status' => 1), array('id' => $id));
+
+				$message= array('message' => "Payment succeeded.");
+				return $app->json($message, 200);
+			}
+		}
 	});
 	$app->match('/payment/{id}', function() use ($app){
 		$error= array('message' => 'This is not a correct api-call');
 		return $app->json($error, 404);
 	})
 	->method('POST|DELETE');
+
 ?>
