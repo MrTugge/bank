@@ -31,7 +31,13 @@
 	    $amount = $app['request']->get('amount');
 	    $description = $app['request']->get('description');
 	    $hash = $app['request']->get('hash');
-	    $ownHash = 'wandelOfNiet' . 'A58JFK9874LAK';
+	    $ownHash = '';
+		
+		if ($sender != null){
+	    	$sql = "SELECT * FROM account WHERE accountnumber = ?";
+	    	$post = $app['db']->fetchAssoc($sql, array($sender));
+			$ownHash = hash('sha256', $post['password'] . $post['salt']);
+	    }
 
 	    if ($hash != $ownHash){
 	    	$error = array('message' => 'This is not a correct api-call.');
