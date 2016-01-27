@@ -13,7 +13,7 @@
 	*/
 	$app->match('/', function() use ($app){
         $error = array('message' => 'This is not a correct api-call.');
-        return $app->json($error, 404);
+        return $app->json($error, 400);
 	})
 	->method('GET|PUT|POST|DELETE');
 
@@ -36,15 +36,18 @@
 		if ($sender != null){
 	    	$sql = "SELECT * FROM account WHERE accountnumber = ?";
 	    	$post = $app['db']->fetchAssoc($sql, array($sender));
-			$ownHash = hash('sha256', $post['password'] . $post['salt']);
+	    	$s = hash_hmac('sha256', 'wandelOfNiet', 'A58JFK9874LAK', true);
+	    	$ownHash = base64_encode($s);
+			//$ownHash = hash('sha256', $post['password'] . $post['salt']);
 	    }
 
 	    if ($hash != $ownHash){
 	    	$error = array('message' => 'This is not a correct api-call.');
-			return $app->json($error, 404);
+			return $app->json($error, 400);
 	    } else {
 			if ($sender == null or $receiver == null or $amount == null or $description == null or !is_numeric($amount)){
 				$error = array('message' => 'Invalid params.');
+
 				return $app->json($error, 400);
 			} else {
 				$sql = "SELECT * FROM account WHERE (accountnumber = ? AND balance >= ?) OR accountnumber = ?";
@@ -78,7 +81,7 @@
 	->method('POST');
 	$app->match('/payment', function() use ($app){
 		$error = array('message' => 'This is not a correct api-call.');
-		return $app->json($error, 404);
+		return $app->json($error, 400);
 	})
 	->method('PUT|GET|DELETE');
 
@@ -112,7 +115,7 @@
 	->method('GET');
 	$app->match('/payment/{id}', function() use ($app){
 	 	$error= array('message' => 'This is not a correct api-call');
-		return $app->json($error, 404);
+		return $app->json($error, 400);
 	})
 	->method('POST|DELETE');
 ?>
